@@ -10,14 +10,12 @@ const parse = (line: string): Data | undefined => {
         : undefined;
 }
 
-const part1 = (data: Data[]): number => countBy(data, x => {
-    const [min, max, char, pwd] = x;
+const part1 = (data: Data[]): number => countBy(data, ([min, max, char, pwd]) => {
     const count = pwd.split('').reduce((acc, curr) => curr === char ? acc + 1 : acc, 0);
     return count >= min && count <= max;
 });
 
-const part2 = (data: Data[]): number => countBy(data, d => {
-    const [x, y, char, pwd] = d;
+const part2 = (data: Data[]): number => countBy(data, ([x, y, char, pwd]) => {
     return (pwd[x - 1] === char) !== (pwd[y - 1] === char);
 });
 
