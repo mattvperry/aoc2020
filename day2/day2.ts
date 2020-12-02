@@ -3,15 +3,14 @@ import { countBy, readInputLines } from "../shared/utils";
 type Data = [number, number, string, string];
 
 const parse = (line: string): Data | undefined => {
-    const regex = /(\d+)-(\d+) (\w): (\w+)/;
-    const match = line.match(regex);
+    const match = line.match(/(\d+)-(\d+) (\w): (\w+)/);
     return match?.length === 5
         ? [parseInt(match[1], 10), parseInt(match[2], 10), match[3], match[4]]
         : undefined;
 }
 
 const part1 = (data: Data[]): number => countBy(data, ([min, max, char, pwd]) => {
-    const count = pwd.split('').reduce((acc, curr) => curr === char ? acc + 1 : acc, 0);
+    const count = pwd.split('').reduce((acc, curr) => acc + (curr === char ? 1 : 0), 0);
     return count >= min && count <= max;
 });
 
