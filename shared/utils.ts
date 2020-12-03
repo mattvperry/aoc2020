@@ -8,5 +8,5 @@ export const readInputLines = async <T extends Day>(day: T) => {
     return text.split('\n');
 }
 
-export const countBy = <T>(data: T[], fn: (x: T) => boolean): number =>
-    data.reduce((acc, curr) => fn(curr) ? acc + 1 : acc, 0);
+export const countBy = <T>(data: ArrayLike<T> | Iterable<T>, fn: (x: T) => boolean): number =>
+    Array.from(data).reduce((acc, curr) => fn(curr) ? acc + 1 : acc, 0);
