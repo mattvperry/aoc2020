@@ -11,33 +11,26 @@ const digitsInRange = (min: number, max: number): (x: string) => boolean => x =>
 
 const hgt = (x: string): boolean => {
     const ranges = {
-        cm: [150, 193],
-        in: [59, 76],
+        in: digitsInRange(59, 76),
+        cm: digitsInRange(150, 193),
     };
 
-    const match = x.match(/^(\d+)(cm|in)$/);
-    if (match === null) {
-        return false;
-    }
-
-    const [min, max] = ranges[match[2] as ('cm' | 'in')];
-    return digitsInRange(min, max)(match[1]);
+    const unit = x.slice(x.length - 2, x.length);
+    return ranges.hasOwnProperty(unit)
+        ? ranges[unit as keyof typeof ranges](x.slice(0, x.length - 2))
+        : false;
 };
 
-const hcl = (x: string): boolean => /^#[\da-f]{6}$/.test(x);
-
-const ecl = (x: string): boolean => /^(amb|blu|brn|gry|grn|hzl|oth)$/.test(x);
-
-const pid = (x: string): boolean => /^\d{9}$/.test(x);
+const regexTest = (regex: RegExp): (x: string) => boolean => x => regex.test(x);
 
 const fields = [
     { type: 'byr', required: true, valid: digitsInRange(1920, 2002) },
     { type: 'iyr', required: true, valid: digitsInRange(2010, 2020) },
     { type: 'eyr', required: true, valid: digitsInRange(2020, 2030) },
     { type: 'hgt', required: true, valid: hgt },
-    { type: 'hcl', required: true, valid: hcl },
-    { type: 'ecl', required: true, valid: ecl },
-    { type: 'pid', required: true, valid: pid },
+    { type: 'hcl', required: true, valid: regexTest(/^#[\da-f]{6}$/) },
+    { type: 'ecl', required: true, valid: regexTest(/^(amb|blu|brn|gry|grn|hzl|oth)$/) },
+    { type: 'pid', required: true, valid: regexTest(/^\d{9}$/) },
     { type: 'cid', required: false, valid: (_: string) => true },
 ] as const;
 
