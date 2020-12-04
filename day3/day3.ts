@@ -28,7 +28,7 @@ const part2 = (grid: Grid): number => {
 
 (async () => {
     const input = await readInputLines('day3');
-    const grid: Grid = input.map(l => l.trim().split(''));
+    const grid: Grid = input.map(l => l.split(''));
 
     console.log(part1(grid));
     console.log(part2(grid));
