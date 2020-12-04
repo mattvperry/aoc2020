@@ -73,8 +73,7 @@ async function* reader(lines: AsyncIterableIterator<string>): AsyncIterableItera
 
 const day4 = (input: AsyncIterableIterator<Passport>): Promise<[number, number]> => {
     const requiredFields = fields.filter((f): f is RequiredField => f.required);
-    return reduceAsync(input, [0, 0], (acc, curr) => {
-        const [part1, part2] = acc;
+    return reduceAsync(input, [0, 0], ([part1, part2], curr) => {
         const present = requiredFields.every(({ type }) => isDefined(curr[type]));
         const valid = fields.every(({ type, valid }) => valid(curr[type] ?? ''));
         return Promise.resolve([part1 + (present ? 1 : 0), part2 + (valid ? 1 : 0)]);
