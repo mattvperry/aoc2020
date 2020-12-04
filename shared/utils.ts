@@ -35,10 +35,10 @@ export const reduce = <T, U>(data: Iterable<T>, seed: U, fn: (acc: U, curr: T) =
     return acc;
 }
 
-export const reduceAsync = async <T, U>(data: AsyncIterable<T>, seed: U, fn: (acc: U, curr: T) => U): Promise<U> => {
+export const reduceAsync = async <T, U>(data: AsyncIterable<T>, seed: U, fn: (acc: U, curr: T) => Promise<U>): Promise<U> => {
     let acc = seed;
     for await (const x of data) {
-        acc = fn(acc, x);
+        acc = await fn(acc, x);
     }
 
     return acc;

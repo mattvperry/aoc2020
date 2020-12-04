@@ -77,7 +77,7 @@ const day4 = (input: AsyncIterableIterator<Passport>): Promise<[number, number]>
         const [part1, part2] = acc;
         const present = requiredFields.every(({ type }) => isDefined(curr[type]));
         const valid = fields.every(({ type, valid }) => valid(curr[type] ?? ''));
-        return [part1 + (present ? 1 : 0), part2 + (valid ? 1 : 0)];
+        return Promise.resolve([part1 + (present ? 1 : 0), part2 + (valid ? 1 : 0)]);
     });
 };
 
