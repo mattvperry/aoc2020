@@ -1,12 +1,11 @@
-import { countBy, readInputLines } from "../shared/utils";
+import { Entries, fromEntries, isDefined, streamInputLinesAsync, reduceAsync } from "../shared/utils";
 
-const digitsInRange = (length: number, min: number, max: number): (x: string) => boolean => x => {
-    const match = x.match(`^\\d{${length}}$`);
-    if (match === null) {
+const digitsInRange = (min: number, max: number): (x: string) => boolean => x => {
+    if (!/^\d+$/.test(x)) {
         return false;
     }
 
-    const val = parseInt(match[0], 10);
+    const val = parseInt(x, 10);
     return val >= min && val <= max;
 };
 
@@ -21,21 +20,20 @@ const hgt = (x: string): boolean => {
         return false;
     }
 
-    const val = parseInt(match[1], 10);
     const [min, max] = ranges[match[2] as ('cm' | 'in')];
-    return val >= min && val <= max;
+    return digitsInRange(min, max)(match[1]);
 };
 
-const hcl = (x: string): boolean => x.match(/^#[\da-f]{6}$/) !== null;
+const hcl = (x: string): boolean => /^#[\da-f]{6}$/.test(x);
 
-const ecl = (x: string): boolean => x.match(/^(amb|blu|brn|gry|grn|hzl|oth)$/) !== null;
+const ecl = (x: string): boolean => /^(amb|blu|brn|gry|grn|hzl|oth)$/.test(x);
 
-const pid = (x: string): boolean => x.match(/^\d{9}$/) !== null;
+const pid = (x: string): boolean => /^\d{9}$/.test(x);
 
 const fields = [
-    { type: 'byr', required: true, valid: digitsInRange(4, 1920, 2002) },
-    { type: 'iyr', required: true, valid: digitsInRange(4, 2010, 2020) },
-    { type: 'eyr', required: true, valid: digitsInRange(4, 2020, 2030) },
+    { type: 'byr', required: true, valid: digitsInRange(1920, 2002) },
+    { type: 'iyr', required: true, valid: digitsInRange(2010, 2020) },
+    { type: 'eyr', required: true, valid: digitsInRange(2020, 2030) },
     { type: 'hgt', required: true, valid: hgt },
     { type: 'hcl', required: true, valid: hcl },
     { type: 'ecl', required: true, valid: ecl },
@@ -46,18 +44,22 @@ const fields = [
 type Field = (typeof fields)[number];
 type RequiredField = Exclude<Field, { required: false }>;
 type FieldType = Field['type'];
-type Passport = Record<FieldType, string | undefined>;
+type Passport = Partial<Record<FieldType, string>>;
+type PassportEntry = Entries<Passport>;
 
-const requiredFields = fields.filter((f): f is RequiredField => f.required);
-
-const parse = (str: string): Passport => str
+const fieldNames = new Set<string>(fields.map(f => f.type));
+const isFieldType = (key: string): key is FieldType => fieldNames.has(key);
+const parse = (str: string): Passport => fromEntries(str
     .split(' ')
-    .map(p => p.split(':'))
-    .reduce((acc, [type, value]) => ({ ...acc, [type]: value }), {} as Passport);
+    .map((p): PassportEntry | undefined => {
+        const [key, value] = p.split(':');
+        return isFieldType(key) ? [key, value] : undefined;
+    })
+    .filter(isDefined));
 
-function* reader(lines: string[]): IterableIterator<Passport> {
+async function* reader(lines: AsyncIterableIterator<string>): AsyncIterableIterator<Passport> {
     let current = '';
-    for (const line of lines) {
+    for await (const line of lines) {
         if (line === '') {
             yield parse(current);
             current = '';
@@ -69,14 +71,18 @@ function* reader(lines: string[]): IterableIterator<Passport> {
     yield parse(current);
 }
 
-const part1 = (input: Passport[]) => countBy(input, passport => requiredFields.every(({ type }) => passport[type] !== undefined));
-
-const part2 = (input: Passport[]) => countBy(input, passport => fields.every(({ type, valid }) => valid(passport[type] ?? '')));
+const day4 = (input: AsyncIterableIterator<Passport>): Promise<[number, number]> => {
+    const requiredFields = fields.filter((f): f is RequiredField => f.required);
+    return reduceAsync(input, [0, 0], (acc, curr) => {
+        const [part1, part2] = acc;
+        const present = requiredFields.every(({ type }) => isDefined(curr[type]));
+        const valid = fields.every(({ type, valid }) => valid(curr[type] ?? ''));
+        return [part1 + (present ? 1 : 0), part2 + (valid ? 1 : 0)];
+    });
+};
 
 (async () => {
-    const lines = await readInputLines('day4');
-    const input = Array.from(reader(lines));
-
-    console.log(part1(input));
-    console.log(part2(input));
+    const lines = streamInputLinesAsync('day4');
+    const [part1, part2] = await day4(reader(lines));
+    console.log(part1, part2);
 })();
