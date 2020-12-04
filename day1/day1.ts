@@ -2,8 +2,7 @@ import { readInputLines } from '../shared/utils';
 
 const helper = (data: Set<number>, target: number, test: (x: number) => [boolean, number]): number => {
     for (const n of data) {
-        const rest = target - n;
-        const [use, num] = test(rest);
+        const [use, num] = test(target - n);
         if (use) {
             return n * num;
         }
