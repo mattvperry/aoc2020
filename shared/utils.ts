@@ -10,8 +10,9 @@ export async function* streamInputLinesAsync<T extends Day>(day: T): AsyncIterab
     let current = '';
     for await (const x of fs.createReadStream(path.join(day, 'input.txt'))) {
         const lines = (current + x).split('\n');
-        yield* lines.slice(0, lines.length - 1).map(l => l.trim());
-        current = lines[lines.length - 1];
+        const [before, after] = splitAt(lines, lines.length - 1)
+        yield* before.map(l => l.trim());
+        [current] = after
     }
 
     yield current.trim();
@@ -44,13 +45,18 @@ export const reduceAsync = async <T, U>(data: AsyncIterable<T>, seed: U, fn: (ac
     return acc;
 }
 
-export const readInputLines = <T extends Day>(day: T) => arrayFromAsyncGenerator(streamInputLinesAsync(day));
+export const readInputLines = <T extends Day>(day: T) =>
+    arrayFromAsyncGenerator(streamInputLinesAsync(day));
 
-export const isDefined = <T>(x: T | undefined): x is T => x !== undefined;
+type Sliceable = { slice: (start?: number, end?: number) => any, length: number };
+export const splitAt = <T extends Sliceable>(xs: T, i: number): [ReturnType<T['slice']>, ReturnType<T['slice']>] =>
+    [xs.slice(0, i), xs.slice(i, xs.length)];
+
+export const isDefined = <T>(x: T | undefined): x is T =>
+    x !== undefined;
 
 export const countBy = <T>(data: Iterable<T>, fn: (x: T) => boolean): number =>
     reduce(data, 0, (acc, curr) => acc + (fn(curr) ? 1 : 0));
 
-export const fromEntries = <T extends [PropertyKey, any]>(entries: T[]): FromEntries<T> => {
-    return Object.fromEntries(entries) as FromEntries<T>;
-};
+export const fromEntries = <T extends [PropertyKey, any]>(entries: T[]): FromEntries<T> =>
+    Object.fromEntries(entries) as FromEntries<T>;

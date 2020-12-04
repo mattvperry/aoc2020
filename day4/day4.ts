@@ -1,4 +1,4 @@
-import { Entries, fromEntries, isDefined, streamInputLinesAsync, reduceAsync } from "../shared/utils";
+import { Entries, fromEntries, isDefined, streamInputLinesAsync, reduceAsync, splitAt } from "../shared/utils";
 
 const digitsInRange = (min: number, max: number): (x: string) => boolean => x => {
     if (!/^\d+$/.test(x)) {
@@ -15,9 +15,9 @@ const hgt = (x: string): boolean => {
         cm: digitsInRange(150, 193),
     };
 
-    const unit = x.slice(x.length - 2, x.length);
+    const [digits, unit] = splitAt(x, x.length - 2);
     return ranges.hasOwnProperty(unit)
-        ? ranges[unit as keyof typeof ranges](x.slice(0, x.length - 2))
+        ? ranges[unit as keyof typeof ranges](digits)
         : false;
 };
 
