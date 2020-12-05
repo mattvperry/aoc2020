@@ -27,6 +27,18 @@ export const arrayFromAsyncGenerator = async <T>(gen: AsyncIterableIterator<T>):
     return current;
 };
 
+export function* map<T, U>(data: Iterable<T>, fn: (curr: T) => U): Iterable<U> {
+    for (const x of data) {
+        yield fn(x);
+    }
+}
+
+export async function* mapAsync<T, U>(data: AsyncIterable<T>, fn: (curr: T) => Promise<U>): AsyncIterableIterator<U> {
+    for await (const x of data) {
+        yield fn(x);
+    }
+}
+
 export const reduce = <T, U>(data: Iterable<T>, seed: U, fn: (acc: U, curr: T) => U): U => {
     let acc = seed;
     for (const x of data) {
