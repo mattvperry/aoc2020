@@ -60,6 +60,13 @@ export const reduceAsync = async <T, U>(data: AsyncIterable<T>, seed: U, fn: (ac
 export const readInputLines = <T extends Day>(day: T) =>
     arrayFromAsyncGenerator(streamInputLinesAsync(day));
 
+export const charFrequency = (input: string): { [k: string]: number } => {
+    return input.split('').reduce((acc, curr) => {
+        acc[curr] = acc[curr] ? acc[curr] + 1 : 1;
+        return acc;
+    }, {} as ReturnType<typeof charFrequency>);
+};
+
 type Sliceable = { slice: (start?: number, end?: number) => any, length: number };
 export const splitAt = <T extends Sliceable>(xs: T, i: number): [ReturnType<T['slice']>, ReturnType<T['slice']>] =>
     [xs.slice(0, i), xs.slice(i, xs.length)];
