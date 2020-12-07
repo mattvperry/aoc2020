@@ -1,4 +1,4 @@
-import { countBy, distinct, Entries, fromEntries, readInputLines } from "../shared/utils";
+import { countBy, Entries, fromEntries, memoize, readInputLines } from "../shared/utils";
 
 type BagColor = string;
 type ColorGraph = Record<BagColor, (readonly [BagColor, number])[]>;
@@ -15,31 +15,25 @@ const parse = (line: string): Entries<ColorGraph> => {
     return [key, value];
 };
 
-const hasPath = (graph: ColorGraph, from: BagColor, to: BagColor): boolean => {
-    let explore = graph[from].map(([node]) => node);
-    while (explore.length !== 0) {
-        const [node, ...tail] = explore;
-        if (node === to) {
-            return true;
-        }
+const hasPath = memoize(
+    (graph: ColorGraph, from: BagColor, to: BagColor): boolean =>
+        from !== to
+            ? graph[from].some(([node]) => hasPath(graph, node, to))
+            : true,
+    (_, f, __) => f);
 
-        explore = distinct([
-            ...tail,
-            ...explore.flatMap((node) => graph[node]).map(([node]) => node),
-        ]);
-    }
+const countBags = memoize(
+    (graph: ColorGraph, bag: BagColor): number =>
+        1 + graph[bag].reduce((acc, [color, num]) => acc + (num * countBags(graph, color)), 0),
+    (_, c) => c);
 
-    return false;
-};
-
-const countBags = (graph: ColorGraph, bag: BagColor): number =>
-    1 + graph[bag].reduce((acc, [color, num]) => acc + (num * countBags(graph, color)), 0);
+const target = 'shiny gold';
 
 const part1 = (graph: ColorGraph): number =>
-    countBy(Object.keys(graph), key => hasPath(graph, key, 'shiny gold'));
+    countBy(Object.keys(graph), key => key !== target && hasPath(graph, key, target));
 
 const part2 = (graph: ColorGraph): number =>
-    countBags(graph, 'shiny gold') - 1;
+    countBags(graph, target) - 1;
 
 (async () => {
     const lines = await readInputLines('day7');

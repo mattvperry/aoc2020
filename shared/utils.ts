@@ -67,6 +67,22 @@ export const charFrequency = (input: string): { [k: string]: number } => {
     }, {} as ReturnType<typeof charFrequency>);
 };
 
+export const memoize = <P extends any[], R, K extends P[number]>(
+    fn: (...args: P) => R,
+    key: (...args: P) => K
+): (...args: P) => R => {
+    const memo = {} as Record<K, R>;
+    return (...args: P) => {
+        const k = key(...args);
+        if (isDefined(memo[k])) {
+            return memo[k];
+        }
+
+        memo[k] = fn(...args);
+        return memo[k];
+    };
+};
+
 export const distinct = <T>(xs: T[]): T[] => Array.from(new Set<T>(xs));
 
 export const splitArr = <T>(xs: T[], on: T): [T[], T[]] => {
