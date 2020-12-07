@@ -67,6 +67,10 @@ export const charFrequency = (input: string): { [k: string]: number } => {
     }, {} as ReturnType<typeof charFrequency>);
 };
 
+export const splitArr = <T>(xs: T[], on: T): [T[], T[]] => {
+    return splitAt(xs, xs.indexOf(on) - 1);
+};
+
 type Sliceable = { slice: (start?: number, end?: number) => any, length: number };
 export const splitAt = <T extends Sliceable>(xs: T, i: number): [ReturnType<T['slice']>, ReturnType<T['slice']>] =>
     [xs.slice(0, i), xs.slice(i, xs.length)];
