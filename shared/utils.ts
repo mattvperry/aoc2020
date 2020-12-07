@@ -35,7 +35,7 @@ export function* map<T, U>(data: Iterable<T>, fn: (curr: T) => U): Iterable<U> {
 
 export async function* mapAsync<T, U>(data: AsyncIterable<T>, fn: (curr: T) => Promise<U>): AsyncIterableIterator<U> {
     for await (const x of data) {
-        yield fn(x);
+        yield await fn(x);
     }
 }
 
