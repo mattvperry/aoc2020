@@ -9,8 +9,13 @@ export type Entries<T> = T extends { [K in keyof T]: infer V } ? [keyof T, V] : 
 export async function* streamInputLinesAsync<T extends Day>(day: T): AsyncIterableIterator<string> {
     let current = '';
     for await (const x of fs.createReadStream(path.join(day, 'input.txt'))) {
-        const lines = (current + x).split('\n');
-        const [before, after] = splitAt(lines, lines.length - 1)
+        current = current + x;
+        if (!current.includes('\n')) {
+            continue;
+        }
+
+        const lines = current.split('\n');
+        const [before, after] = splitAt(lines, lines.length - 1);
         yield* before.map(l => l.trim());
         [current] = after
     }
@@ -18,14 +23,8 @@ export async function* streamInputLinesAsync<T extends Day>(day: T): AsyncIterab
     yield current.trim();
 }
 
-export const arrayFromAsyncGenerator = async <T>(gen: AsyncIterableIterator<T>): Promise<T[]> => {
-    const current: T[] = [];
-    for await (const x of gen) {
-        current.push(x);
-    }
-
-    return current;
-};
+export const arrayFromAsyncGenerator = <T>(gen: AsyncIterableIterator<T>): Promise<T[]> =>
+    reduceAsync(gen, [] as T[], async (acc, curr) => [...acc, curr]);
 
 export function* map<T, U>(data: Iterable<T>, fn: (curr: T) => U): Iterable<U> {
     for (const x of data) {
