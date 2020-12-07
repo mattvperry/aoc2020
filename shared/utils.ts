@@ -67,6 +67,8 @@ export const charFrequency = (input: string): { [k: string]: number } => {
     }, {} as ReturnType<typeof charFrequency>);
 };
 
+export const distinct = <T>(xs: T[]): T[] => Array.from(new Set<T>(xs));
+
 export const splitArr = <T>(xs: T[], on: T): [T[], T[]] => {
     return splitAt(xs, xs.indexOf(on) - 1);
 };
