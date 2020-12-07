@@ -5,10 +5,10 @@ type ColorGraph = Record<BagColor, (readonly [BagColor, number])[]>;
 
 const parse = (line: string): Entries<ColorGraph> => {
     const [color, rest] = line.split(' bags contain ');
-    const value = rest !== 'no other bags.' ? rest.split(', ').map(x => {
+    const value = rest === 'no other bags.' ? [] : rest.split(', ').map(x => {
         const [num, color1, color2] = x.split(' ');
         return [`${color1} ${color2}`, parseInt(num, 10)] as const;
-    }) : [];
+    });
 
     return [color, value];
 };
