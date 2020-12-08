@@ -26,6 +26,20 @@ export async function* streamInputLinesAsync<T extends Day>(day: T): AsyncIterab
 export const arrayFromAsyncGenerator = <T>(gen: AsyncIterableIterator<T>): Promise<T[]> =>
     reduceAsync(gen, [] as T[], async (acc, curr) => [...acc, curr]);
 
+export function* zipper<T>(data: Iterable<T>): IterableIterator<[T[], T, T[]]> {
+    let init: T[] = [];
+    let [head, ...tail] = data;
+    while (tail.length >= 0) {
+        yield [init, head, tail];
+        if (tail.length === 0) {
+            break;
+        }
+
+        init = [...init, head];
+        [head, ...tail] = tail;
+    }
+}
+
 export function* map<T, U>(data: Iterable<T>, fn: (curr: T) => U): Iterable<U> {
     for (const x of data) {
         yield fn(x);

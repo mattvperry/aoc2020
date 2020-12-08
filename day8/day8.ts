@@ -1,17 +1,11 @@
-import { readInputLines } from "../shared/utils";
+import { map, readInputLines, zipper } from "../shared/utils";
 
 type Op = 'nop' | 'acc' | 'jmp';
 type Instr = [Op, number];
 
-interface Result extends Pick<ProgramState, 'accumulator'> {
-    success: boolean;
-}
-
 interface ProgramState {
-    instructions: Instr[];
     ptr: number;
     accumulator: number;
-    seen: Set<number>;
 }
 
 const parse = (line: string): Instr => {
@@ -19,89 +13,44 @@ const parse = (line: string): Instr => {
     return [op as Op, parseInt(num, 10)];
 };
 
-const step = (program: ProgramState): ProgramState => {
-    const [op, num] = program.instructions[program.ptr];
-    switch (op) {
-        case 'acc':
-            return {
-                ...program,
-                accumulator: program.accumulator + num,
-                ptr: program.ptr + 1,
-                seen: program.seen.add(program.ptr),
-            }
-        case 'jmp':
-            return {
-                ...program,
-                ptr: program.ptr + num,
-                seen: program.seen.add(program.ptr),
-            }
-        case 'nop':
-            return {
-                ...program,
-                ptr: program.ptr + 1,
-                seen: program.seen.add(program.ptr),
-            }
-    }
-};
-
-const run = (instructions: Instr[]): Result => {
-    let program: ProgramState = {
-        instructions,
+const run = (instructions: Instr[]): ProgramState => {
+    const seen = new Set<number>();
+    let state: ProgramState = {
         ptr: 0,
         accumulator: 0,
-        seen: new Set<number>(),
     };
 
-    while (true) {
-        if (program.ptr === instructions.length) {
-            return {
-                accumulator: program.accumulator,
-                success: true,
-            }
-        }
-
-        if (program.ptr < 0
-            || program.ptr > instructions.length
-            || program.seen.has(program.ptr)) {
-            return {
-                accumulator: program.accumulator,
-                success: false,
-            }
-        }
-
-        program = step(program);
+    while (state.ptr >= 0 && state.ptr < instructions.length && !seen.has(state.ptr)) {
+        seen.add(state.ptr);
+        const [op, num] = instructions[state.ptr];
+        state = {
+            ptr: state.ptr + (op === 'jmp' ? num : 1),
+            accumulator: state.accumulator + (op === 'acc' ? num : 0),
+        };
     }
+
+    return state;
 }
 
 function* modify(instructions: Instr[]): IterableIterator<Instr[]> {
-    let past: Instr[] = [];
-    let [[op, num], ...tail] = instructions;
-    while (tail.length > 0) {
-        switch (op) {
-            case 'nop':
-                yield [...past, ['jmp', num], ...tail];
-                break;
-            case 'jmp':
-                yield [...past, ['nop', num], ...tail];
-                break;
+    for (let i = 0; i < instructions.length; ++i) {
+        const [op, num] = instructions[i];
+        if (op === 'acc') {
+            continue;
         }
 
-        past = [...past, [op, num]];
-        [[op, num], ...tail] = tail;
+        yield Object.assign([], instructions, { [i]: [op === 'jmp' ? 'nop' : 'jmp', num] });
     }
 };
 
 const part1 = (instructions: Instr[]): number => run(instructions).accumulator;
 
-const part2 = (instructions: Instr[]): number => {
-    for (const is of modify(instructions)) {
-        const result = run(is);
-        if (result.success) {
+const part2 = (instructions: Instr[]): number | undefined => {
+    for (const result of map(modify(instructions), run)) {
+        if (result.ptr === instructions.length) {
             return result.accumulator;
         }
     }
-
-    return -1;
 }
 
 (async () => {
