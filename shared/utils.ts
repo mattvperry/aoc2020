@@ -3,7 +3,7 @@ import path from 'path';
 
 export type Day = `day${number}`;
 
-export type FromEntries<T> = T extends [PropertyKey, infer V][] ? { [K in T[number][0]]?: V } : never;
+export type FromEntries<T> = T extends [PropertyKey, infer V] ? { [X in T[0]]?: V } : never;
 export type Entries<T> = T extends { [K in keyof T]: infer V } ? [keyof T, V] : never;
 
 export async function* streamInputLinesAsync<T extends Day>(day: T): AsyncIterableIterator<string> {
@@ -112,5 +112,5 @@ export const isDefined = <T>(x: T | undefined): x is T =>
 export const countBy = <T>(data: Iterable<T>, fn: (x: T) => boolean): number =>
     reduce(data, 0, (acc, curr) => acc + (fn(curr) ? 1 : 0));
 
-export const fromEntries = <T extends [PropertyKey, any]>(entries: T[]): FromEntries<T> =>
+export const fromEntries = <T extends [PropertyKey, any]>(entries: Iterable<T>): FromEntries<T> =>
     Object.fromEntries(entries) as FromEntries<T>;
