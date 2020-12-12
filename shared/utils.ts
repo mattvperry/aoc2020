@@ -114,3 +114,5 @@ export const countBy = <T>(data: Iterable<T>, fn: (x: T) => boolean): number =>
 
 export const fromEntries = <T extends [PropertyKey, any]>(entries: Iterable<T>): FromEntries<T> =>
     Object.fromEntries(entries) as FromEntries<T>;
+
+export const mod = (n: number, m: number): number => ((n % m) + m) % m;
