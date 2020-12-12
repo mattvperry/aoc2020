@@ -1,18 +1,9 @@
 import { mod, readInputLines } from "../shared/utils";
 
-type Dir = (typeof dirs)[number];
+type Dir = 'N' | 'E' | 'S' | 'W';
 type Action = [Dir | 'L' | 'R' | 'F', number];
 type Coord = [number, number];
-type StateBase = { pos: Coord };
-type StateP1 = StateBase & { facing: number };
-type StateP2 = StateBase & { waypoint: Coord };
-
-const dirs = [
-    'N',
-    'E',
-    'S',
-    'W',
-] as const;
+type State = { pos: Coord, waypoint: Coord };
 
 const deltas: Record<Dir, Coord> = {
     'N': [0, 1],
@@ -39,39 +30,26 @@ const move = ([x, y]: Coord, amt: number, [dx, dy]: Coord): Coord => [
     y + (dy * amt)
 ];
 
-const step1 = ({ pos, facing }: StateP1, [op, amt]: Action): StateP1 => {
+const step = (mover: keyof State) => (state: State, [op, amt]: Action): State => {
     switch (op) {
         case 'L':
-            return { pos, facing: mod(facing - mod(amt / 90, 4), 4) }
+            return { ...state, waypoint: rotate(state.waypoint, mod(amt / 90, 4)) }
         case 'R':
-            return { pos, facing: mod(facing + mod(amt / 90, 4), 4) }
+            return { ...state, waypoint: rotate(state.waypoint, 4 - mod(amt / 90, 4)) }
         case 'F':
-            return { pos: move(pos, amt, deltas[dirs[facing]]), facing };
+            return { ...state, pos: move(state.pos, amt, state.waypoint) };
         default:
-            return { pos: move(pos, amt, deltas[op]), facing };
-    }
-}
-
-const step2 = ({ pos, waypoint }: StateP2, [op, amt]: Action): StateP2 => {
-    switch (op) {
-        case 'L':
-            return { pos, waypoint: rotate(waypoint, mod(amt / 90, 4)) };
-        case 'R':
-            return { pos, waypoint: rotate(waypoint, 4 - mod(amt / 90, 4)) };
-        case 'F':
-            return { pos: move(pos, amt, waypoint), waypoint };
-        default:
-            return { pos, waypoint: move(waypoint, amt, deltas[op]) };
+            return { ...state, [mover]: move(state[mover], amt, deltas[op]) };
     }
 };
 
-const solve = <S extends StateBase>(initial: S, step: (state: S, action: Action) => S) => (actions: Action[]): number => {
-    const { pos: [x, y] } = actions.reduce(step, initial);
+const solve = (waypoint: Coord, fn: Parameters<typeof step>[0]) => (actions: Action[]): number => {
+    const { pos: [x, y] } = actions.reduce(step(fn), { pos: [0, 0], waypoint });
     return Math.abs(x) + Math.abs(y);
 };
 
-const part1 = solve({ pos: [0, 0], facing: 1 }, step1);
-const part2 = solve({ pos: [0, 0], waypoint: [10, 1] }, step2);
+const part1 = solve([1, 0], 'pos');
+const part2 = solve([10, 1], 'waypoint');
 
 (async () => {
     const lines = await readInputLines('day12');
