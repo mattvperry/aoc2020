@@ -1,30 +1,31 @@
-import { fromEntries, readInputLines } from "../shared/utils";
+import { readInputLines } from "../shared/utils";
 
 type State = {
     turn: number;
     prev: number;
-    spoken: Partial<Record<number, number[]>>;
+    spoken: Map<number, readonly number[]>;
 }
 
-function* sequence(start: number[]): Iterable<[number, number]> {
-    yield* start.map((x, i) => [x, i + 1] as [number, number]);
+function* sequence(start: number[]): Iterable<readonly [number, number]> {
+    yield* start.map((x, i) => [x, i + 1] as const);
 
     const state: State = {
         prev: start[start.length - 1],
         turn: start.length + 1,
-        spoken: fromEntries(start.map((x, i) => [x, [i + 1]] as [number, number[]])),
+        spoken: new Map(start.map((x, i) => [x, [i + 1]] as const)),
     };
 
     while (true) {
-        const turns = state.spoken[state.prev] ?? [];
+        const turns = state.spoken.get(state.prev) ?? [];
         const val = turns.length <= 1 ? 0 : turns[0] - turns[1];
         yield [val, state.turn];
 
-        const valTurns = state.spoken[val];
+        const valTurns = state.spoken.get(val);
         state.prev = val;
-        state.spoken[val] = valTurns
+        state.spoken.set(val, valTurns
             ? [state.turn, valTurns[0]]
-            : [state.turn];
+            : [state.turn]
+        );
         state.turn = state.turn + 1;
     };
 }
