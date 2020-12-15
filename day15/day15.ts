@@ -1,12 +1,9 @@
 import { readInputLines } from "../shared/utils";
 
 function* sequence(start: number[]): Iterable<readonly [number, number]> {
-    const init = start.map((x, i) => [x, i + 1] as const);
-    yield* init;
-
     let next = 0;
     let turn = start.length + 1;
-    let spoken = new Map(init);
+    let spoken = new Map(start.map((x, i) => [x, i + 1] as const));
 
     while (true) {
         const curr = next;

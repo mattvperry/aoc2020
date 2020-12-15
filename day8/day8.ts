@@ -1,4 +1,4 @@
-import { map, readInputLines, zipper } from "../shared/utils";
+import { map, readInputLines } from "../shared/utils";
 
 type Op = 'nop' | 'acc' | 'jmp';
 type Instr = [Op, number];
