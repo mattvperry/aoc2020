@@ -1,32 +1,21 @@
 import { readInputLines } from "../shared/utils";
 
-type State = {
-    turn: number;
-    prev: number;
-    spoken: Map<number, readonly number[]>;
-}
-
 function* sequence(start: number[]): Iterable<readonly [number, number]> {
-    yield* start.map((x, i) => [x, i + 1] as const);
+    const init = start.map((x, i) => [x, i + 1] as const);
+    yield* init;
 
-    const state: State = {
-        prev: start[start.length - 1],
-        turn: start.length + 1,
-        spoken: new Map(start.map((x, i) => [x, [i + 1]] as const)),
-    };
+    let next = 0;
+    let turn = start.length + 1;
+    let spoken = new Map(init);
 
     while (true) {
-        const turns = state.spoken.get(state.prev) ?? [];
-        const val = turns.length <= 1 ? 0 : turns[0] - turns[1];
-        yield [val, state.turn];
+        const curr = next;
+        next = turn - (spoken.get(next) ?? turn);
 
-        const valTurns = state.spoken.get(val);
-        state.prev = val;
-        state.spoken.set(val, valTurns
-            ? [state.turn, valTurns[0]]
-            : [state.turn]
-        );
-        state.turn = state.turn + 1;
+        yield [curr, turn];
+        spoken.set(curr, turn);
+
+        turn = turn + 1;
     };
 }
 
