@@ -1,4 +1,4 @@
-import { fromEntries, isDefined, readInputLines, splitOn } from "../shared/utils";
+import { difference, intersect, readInputLines, splitOn, zipWith } from "../shared/utils";
 
 type Range = [number, number];
 type Field = {
@@ -32,35 +32,34 @@ const parse = (lines: string[]): Data => {
     };
 };
 
-const valid = (ranges: Range[]) => (x: number): boolean =>
-    ranges.some(([min, max]) => min <= x && x <= max);
+const valid = (fields: Field[], x: number): string[] => fields
+    .filter(({ ranges }) => ranges.some(([min, max]) => min <= x && x <= max))
+    .map(({ name }) => name);
 
-const part1 = ({ fields, others }: Data): number => {
-    const validators = fields.map(f => valid(f.ranges));
-    return others
-        .flatMap(t => t)
-        .filter(x => !validators.some(v => v(x)))
-        .reduce((acc, curr) => acc + curr);
-};
+const possible = (ticket: Ticket, fields: Field[]): Set<string>[] =>
+    ticket.map(x => new Set(valid(fields, x)));
 
-const part2 = ({ fields, yours, others}: Data): number => {
-    const entries = fields.map(f => [f.name, valid(f.ranges)] as const);
-    const valids = others.filter(t => t.every(x => entries.some(([, v]) => v(x))));
-    const lookup = new Map(entries);
+const part1 = ({ fields, others }: Data): number => others
+    .flatMap(t => t)
+    .filter(x => valid(fields, x).length === 0)
+    .reduce((acc, curr) => acc + curr);
 
-    let possible: string[][] = new Array(fields.length).fill(fields.map(f => f.name));
-    for (const ticket of valids) {
-        for (const [val, pos] of ticket.map((x, i) => [x, i])) {
-            possible[pos] = possible[pos].filter(f => (lookup.get(f) ?? (_ => true))(val))
-        }
+const part2 = ({ fields, yours, others }: Data): number => {
+    const valids = others.filter(t => t.every(x => valid(fields, x).length !== 0));
+
+    let possibles = valids
+        .map(t => possible(t, fields))
+        .reduce(
+            (acc, curr) => zipWith(acc, curr, intersect),
+            new Array<Set<string>>(fields.length).fill(new Set(fields.map(f => f.name)))
+        );
+
+    while (!possibles.every(ps => ps.size === 1)) {
+        const settled = new Set(possibles.filter(ps => ps.size === 1).map(([f]) => f));
+        possibles = possibles.map(ps => ps.size === 1 ? ps : difference(ps, settled));
     }
 
-    while (!possible.every(ps => ps.length === 1)) {
-        const settled = new Set(possible.filter(ps => ps.length === 1).map(([f]) => f));
-        possible = possible.map(ps => ps.length === 1 ? ps : ps.filter(f => !settled.has(f)));
-    }
-
-    return possible
+    return possibles
         .map(([x], i) => [x, yours[i]] as const)
         .filter(([x]) => x.startsWith('departure'))
         .reduce((acc, [, curr]) => acc * curr, 1);

@@ -116,4 +116,20 @@ export const countBy = <T>(data: Iterable<T>, fn: (x: T) => boolean): number =>
 export const fromEntries = <T extends readonly [PropertyKey, any]>(entries: Iterable<T>): FromEntries<T> =>
     Object.fromEntries(entries) as FromEntries<T>;
 
+export const zipWith = <T, U>(xs: T[], ys: T[], fn: (a: T, b: T) => U): U[] => {
+    if (xs.length === 0 || ys.length === 0) {
+        return [];
+    }
+
+    const [x, ...xr] = xs;
+    const [y, ...yr] = ys;
+    return [fn(x, y), ...zipWith(xr, yr, fn)];
+};
+
+export const intersect = <T>(xs: Set<T>, ys: Set<T>): Set<T> =>
+    new Set([...xs].filter(x => ys.has(x)));
+
+export const difference = <T>(xs: Set<T>, ys: Set<T>): Set<T> =>
+    new Set([...xs].filter(x => !ys.has(x)));
+
 export const mod = (n: number, m: number): number => ((n % m) + m) % m;
