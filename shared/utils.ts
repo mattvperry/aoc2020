@@ -98,8 +98,9 @@ export const memoize = <P extends any[], R, K extends P[number]>(
 
 export const distinct = <T>(xs: T[]): T[] => Array.from(new Set<T>(xs));
 
-export const splitArr = <T>(xs: T[], on: T): [T[], T[]] => {
-    return splitAt(xs, xs.indexOf(on) - 1);
+export const splitOn = <T>(xs: T[], on: T): [T[], T[]] => {
+    const idx = xs.indexOf(on);
+    return [xs.slice(0, idx), xs.slice(idx + 1, xs.length)];
 };
 
 type Sliceable = { slice: (start?: number, end?: number) => any, length: number };
