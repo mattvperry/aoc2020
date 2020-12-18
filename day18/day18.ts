@@ -1,74 +1,89 @@
 import { isDefined, readInputLines } from "../shared/utils";
 
 type Token
-    = { type: 'lit', value: `${number}` }
+    = { type: 'lit', value: string }
     | { type: 'add' }
     | { type: 'mul' }
     | { type: 'lpar' }
     | { type: 'rpar' }
 
 type Expr
-    = { type: 'lit', value: number }
+    = { type: 'lit', value: bigint }
     | { type: 'add', left: Expr, right: Expr }
     | { type: 'mul', left: Expr, right: Expr }
 
 const tokenize = (line: string): Token[] => {
     return line.split(' ').flatMap<Token>(w => {
         if (w === '+') {
-            return ['add' as const];
+            return [{ type: 'add' }];
         }
 
         if (w === '*') {
-            return ['mul' as const];
+            return [{ type: 'mul' }];
         }
 
         if (w.startsWith('(')) {
-            return ['lpar' as const, w.slice(1) as `${number}`];
+            return [{ type: 'lpar' }, ...tokenize(w.slice(1))];
         }
 
         if (w.endsWith(')')) {
-            return [w.slice(0, w.length - 1) as `${number}`, 'rpar' as const];
+            return [...tokenize(w.slice(0, w.length - 1)), { type: 'rpar' }];
         }
 
-        return [w as `${number}`];
+        return [{ type: 'lit', value: w as `${number}` }];
     });
 };
 
-const parseRhs = (tokens: Token[]): [Expr | undefined, Token[]] => {
+const findRpar = (tokens: Token[]): number => {
+    let lefts = 1;
+    for (let i = 0; i < tokens.length; ++i) {
+        const curr = tokens[i];
+        if (curr.type === 'lpar') {
+            lefts = lefts + 1;
+        }
+
+        if (curr.type === 'rpar') {
+            lefts = lefts - 1;
+        }
+
+        if (lefts === 0) {
+            return i;
+        }
+    }
+
+    return -1;
+};
+
+const parseSub = (tokens: Token[]): [Expr | undefined, Token[]] => {
     const [top, ...rest] = tokens;
     if (top.type === 'lit') {
         return [
-            { type: 'lit', value: parseInt(top.value, 10) },
+            { type: 'lit', value: BigInt(top.value) },
             rest
         ];
     }
 
     if (top.type === 'lpar') {
-        const idx = tokens.findIndex(t => t.type === 'rpar');
+        const idx = findRpar(rest);
         if (idx !== -1) {
-            return parseExpr(tokens.slice(0, idx));
+            const [expr] = parseExpr(rest.slice(0, idx));
+            if (isDefined(expr)) {
+                return [expr, rest.slice(idx + 1)];
+            }
         }
-    }
-
-    return [undefined, tokens];
-};
-
-const parseLhs = (tokens: Token[]): [Expr | undefined, Token[]] => {
-    const [top, ...rest] = tokens;
-    if (top.type === 'lit') {
-        return [
-            { type: 'lit', value: parseInt(top.value, 10) },
-            rest
-        ];
     }
 
     return [undefined, tokens];
 };
 
 const parseExpr = (tokens: Token[]): [Expr | undefined, Token[]] => {
-    const [left, a] = parseLhs(tokens);
+    const [left, a] = parseSub(tokens);
     if (!isDefined(left)) {
         throw new SyntaxError(`Syntax error`);
+    }
+
+    if (a.length === 0) {
+        return [left, a];
     }
 
     const [op, ...b] = a;
@@ -76,7 +91,7 @@ const parseExpr = (tokens: Token[]): [Expr | undefined, Token[]] => {
         throw new SyntaxError(`Syntax error`);
     }
 
-    const [right, c] = parseRhs(b);
+    const [right, c] = parseExpr(b);
     if (!isDefined(right)) {
         throw new SyntaxError(`Syntax error`);
     }
@@ -95,7 +110,7 @@ const parse = (tokens: Token[]): Expr => {
 
 const read = (line: string): Expr => parse(tokenize(line));
 
-const run = (expr: Expr): number => {
+const run = (expr: Expr): bigint => {
     switch (expr.type) {
         case 'lit':
             return expr.value;
@@ -106,35 +121,13 @@ const run = (expr: Expr): number => {
     }
 };
 
-const part1 = (exprs: Expr[]): number =>
-    exprs.map(run).reduce((acc, curr) => acc * curr);
+const part1 = (exprs: Expr[]): bigint =>
+    exprs.map(run).reduce((acc, curr) => acc + curr);
 
 (async () => {
     const lines = await readInputLines('day18');
     const exprs = lines.map(read);
 
-    console.log(part1([
-        {
-            type: 'add',
-            left: { type: 'lit', value: 1 },
-            right: {
-                type: 'add',
-                left: {
-                    type: 'mul',
-                    left: { type: 'lit', value: 2 },
-                    right: { type: 'lit', value: 3 }
-                },
-                right: {
-                    type: 'mul',
-                    left: { type: 'lit', value: 4 },
-                    right: {
-                        type: 'add',
-                        left: { type: 'lit', value: 5 },
-                        right: { type: 'lit', value: 6 }
-                    }
-                }
-            }
-        }
-    ]));
-    // console.log(part1(exprs));
+    exprs.map(run).forEach(console.log.bind(console));
+    console.log(part1(exprs));
 })();
