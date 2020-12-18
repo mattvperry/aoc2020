@@ -104,10 +104,11 @@ const shunting = (tokens: Token[], p: Precedence): Expr => {
             case 'add':
             case 'mul':
                 let op = ops[0];
-                while ((op === 'add' || op === 'mul') && p[op] > p[token.type]) {
+                while ((op === 'add' || op === 'mul') && p[op] >= p[token.type]) {
                     const [left, right, ...rest] = output;
                     output = [{ type: op, left, right }, ...rest];
-                    [op, ...ops] = ops;
+                    [, ...ops] = ops;
+                    op = ops[0];
                 }
 
                 ops = [token.type, ...ops];
@@ -120,7 +121,8 @@ const shunting = (tokens: Token[], p: Precedence): Expr => {
                 while (top !== 'lpar' && top !== 'rpar') {
                     const [left, right, ...rest] = output;
                     output = [{ type: top, left, right }, ...rest];
-                    [top, ...ops] = ops;
+                    [, ...ops] = ops;
+                    top = ops[0];
                 }
 
                 if (top === 'lpar') {
@@ -162,6 +164,5 @@ const part2 = (exprs: Expr[]): bigint =>
     const lines = await readInputLines('day18');
     const exprs = lines.map(read);
 
-    exprs.map(run).forEach(console.log.bind(console));
     console.log(part2(exprs));
 })();
