@@ -1,168 +1,113 @@
-import { readInputLines } from "../shared/utils";
+import { mapAsync, reduceAsync, streamInputLinesAsync } from "../shared/utils";
+
+type Operator = '+' | '*';
 
 type Token
     = { type: 'lit', value: string }
-    | { type: 'add' }
-    | { type: 'mul' }
-    | { type: 'lpar' }
-    | { type: 'rpar' }
+    | { type: 'bin', op: Operator }
+    | { type: 'lpar', op: '(' }
+    | { type: 'rpar', op: ')' }
 
 type Expr
     = { type: 'lit', value: bigint }
-    | { type: 'add', left: Expr, right: Expr }
-    | { type: 'mul', left: Expr, right: Expr }
+    | { type: '+', left: Expr, right: Expr }
+    | { type: '*', left: Expr, right: Expr }
 
-type Precedence = Record<'add' | 'mul', number>;
+type Precedence = (op: Operator | '(' | ')' | undefined) => number;
 
 const tokenize = (line: string): Token[] => {
     return line.split(' ').flatMap<Token>(w => {
-        if (w === '+') {
-            return [{ type: 'add' }];
-        }
-
-        if (w === '*') {
-            return [{ type: 'mul' }];
+        if (w === '+' || w === '*') {
+            return [{ type: 'bin', op: w }];
         }
 
         if (w.startsWith('(')) {
-            return [{ type: 'lpar' }, ...tokenize(w.slice(1))];
+            return [{ type: 'lpar', op: '(' }, ...tokenize(w.slice(1))];
         }
 
         if (w.endsWith(')')) {
-            return [...tokenize(w.slice(0, w.length - 1)), { type: 'rpar' }];
+            return [...tokenize(w.slice(0, w.length - 1)), { type: 'rpar', op: ')' }];
         }
 
-        return [{ type: 'lit', value: w as `${number}` }];
+        return [{ type: 'lit', value: w }];
     });
 };
 
-const findRpar = (tokens: Token[]): number => {
-    let lefts = 1;
-    for (let i = 0; i < tokens.length; ++i) {
-        const curr = tokens[i];
-        if (curr.type === 'lpar') {
-            lefts = lefts + 1;
-        }
-
-        if (curr.type === 'rpar') {
-            lefts = lefts - 1;
-        }
-
-        if (lefts === 0) {
-            return i;
-        }
+const shunt = (
+    tokens: Token[],
+    output: Expr[],
+    ops: Exclude<Token, { type: 'lit' }>[],
+    p: Precedence
+): Expr => {
+    if (output.length === 1
+        && ops.length === 0
+        && tokens.length === 0) {
+            return output[0];
     }
 
-    return -1;
-};
-
-const parsePrimary = (tokens: Token[], p: Precedence): [Expr, Token[]] => {
-    const [top, ...rest] = tokens;
-    if (top.type === 'lit') {
-        return [
-            { type: 'lit', value: BigInt(top.value) },
-            rest
-        ];
+    const [token, ...remainingTokens] = tokens;
+    if (token?.type === 'lpar') {
+        return shunt(remainingTokens, output, [token, ...ops], p);
     }
 
-    if (top.type === 'lpar') {
-        const idx = findRpar(rest);
-        if (idx !== -1) {
-            const expr = parse(rest.slice(0, idx), p);
-            return [expr, rest.slice(idx + 1)];
-        }
+    const [op, ...remainingOps] = ops;
+    if (op?.type === 'lpar' && token?.type === 'rpar') {
+        return shunt(remainingTokens, output, remainingOps, p);
     }
 
-    throw new SyntaxError();
-};
-
-const parseExpr = (tokens: Token[], min: number, p: Precedence): [Expr, Token[]] => {
-    let [lhs, [lookahead, ...rest]] = parsePrimary(tokens, p);
-    while ((lookahead?.type === 'add' || lookahead?.type === 'mul') && p[lookahead.type] >= min) {
-        const op = lookahead;
-        const expr = parseExpr(rest, p[op.type], p);
-        let rhs = expr[0];
-        [lookahead, ...rest] = expr[1];
-        lhs = { type: op.type, left: lhs, right: rhs };
+    if (token?.type === 'bin' && p(op?.op) < p(token?.op)) {
+        return shunt(remainingTokens, output, [token, ...ops], p);
     }
 
-    return [lhs, rest];
-};
-
-const parse = (tokens: Token[], p: Precedence): Expr => {
-    return parseExpr(tokens, 0, p)[0];
-};
-
-const shunting = (tokens: Token[], p: Precedence): Expr => {
-    let output: Expr[] = [];
-    let ops: (Exclude<Token['type'], 'lit'>)[] = [];
-    for (const token of tokens) {
-        switch (token.type) {
-            case 'lit':
-                output = [{ type: 'lit', value: BigInt(token.value) }, ...output];
-                break;
-            case 'add':
-            case 'mul':
-                let op = ops[0];
-                while ((op === 'add' || op === 'mul') && p[op] >= p[token.type]) {
-                    const [left, right, ...rest] = output;
-                    output = [{ type: op, left, right }, ...rest];
-                    [, ...ops] = ops;
-                    op = ops[0];
-                }
-
-                ops = [token.type, ...ops];
-                break;
-            case 'lpar':
-                ops = [token.type, ...ops];
-                break;
-            case 'rpar':
-                let top = ops[0];
-                while (top !== 'lpar' && top !== 'rpar') {
-                    const [left, right, ...rest] = output;
-                    output = [{ type: top, left, right }, ...rest];
-                    [, ...ops] = ops;
-                    top = ops[0];
-                }
-
-                if (top === 'lpar') {
-                    [, ...ops] = ops;
-                }
-                break;
-        }
+    if (token?.type === 'lit') {
+        return shunt(remainingTokens, [{ type: 'lit', value: BigInt(token.value) }, ...output], ops, p);
     }
 
-    for (const op of ops) {
-        if (op !== 'add' && op !== 'mul') {
-            continue;
-        }
-
-        const [left, right, ...rest] = output;
-        output = [{ type: op, left, right }, ...rest];
+    if (op?.type === 'bin') {
+        const [left, right, ...remainingOutput] = output;
+        return shunt(tokens, [{ type: op.op, left, right }, ...remainingOutput], remainingOps, p);
     }
 
-    return output[0]
-};
-
-const read = (line: string): Expr => shunting(tokenize(line), { 'add': 1, 'mul': 0 });
+    throw SyntaxError();
+}
 
 const run = (expr: Expr): bigint => {
     switch (expr.type) {
         case 'lit':
             return expr.value;
-        case 'add':
+        case '+':
             return run(expr.left) + run(expr.right);
-        case 'mul':
+        case '*':
             return run(expr.left) * run(expr.right);
     }
 };
 
-const part2 = (exprs: Expr[]): bigint =>
-    exprs.map(run).reduce((acc, curr) => acc + curr);
+const evalTokens = (tokens: Token[], p: Record<Operator, number>) =>
+    run(shunt(tokens, [], [], c => {
+        switch (c) {
+            case '+':
+            case '*':
+                return p[c];
+            case '(':
+            case undefined:
+                return 0;
+            default:
+                throw new SyntaxError(`Unexpected token: ${c}`);
+        }
+    }));
+
+const day18 = (tokens: AsyncIterable<Token[]>) => {
+    return reduceAsync(tokens, [0n, 0n], async ([p1, p2], curr) => [
+        p1 + evalTokens(curr, { '+': 1, '*': 1 }),
+        p2 + evalTokens(curr, { '+': 2, '*': 1 }),
+    ]);
+};
 
 (async () => {
-    const lines = await readInputLines('day18');
-    const exprs = lines.map(read);
+    const lines = streamInputLinesAsync('day18');
+    const tokens = mapAsync(lines, async l => tokenize(l));
 
-    console.log(part2(exprs));
+    const [part1, part2] = await day18(tokens);
+    console.log(part1);
+    console.log(part2);
 })();
