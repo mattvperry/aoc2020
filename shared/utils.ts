@@ -80,7 +80,7 @@ export const charFrequency = (input: string): { [k: string]: number } => {
     }, {} as ReturnType<typeof charFrequency>);
 };
 
-export const memoize = <P extends any[], R, K extends P[number]>(
+export const memoize = <P extends any[], R, K extends PropertyKey>(
     fn: (...args: P) => R,
     key: (...args: P) => K
 ): (...args: P) => R => {
