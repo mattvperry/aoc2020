@@ -100,6 +100,10 @@ export const distinct = <T>(xs: T[]): T[] => Array.from(new Set<T>(xs));
 
 export const splitOn = <T>(xs: T[], on: T): [T[], T[]] => {
     const idx = xs.indexOf(on);
+    if (idx === -1) {
+        return [xs, []];
+    }
+
     return [xs.slice(0, idx), xs.slice(idx + 1, xs.length)];
 };
 
