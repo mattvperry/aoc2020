@@ -1,4 +1,4 @@
-import { countBy, isDefined, readInputLines, splitOn } from "../shared/utils";
+import { countBy, intersect, isDefined, readInputLines, splitOn } from "../shared/utils";
 
 type Image = string[];
 
@@ -60,108 +60,50 @@ const parse = (lines: string[]): Tile[] => {
     return tiles.concat(parse(rest));
 };
 
-const overlap = (id: number, tiles: Tile[]): Tile[] => {
-    const target = tiles.filter(t => t.id === id);
-    const others = tiles.filter(t => t.id !== id);
-    const es = new Set(target.flatMap(edges));
-    return others.filter(o => edges(o).some(e => es.has(e)));
+const popTopLeft = (tiles: Tile[]): [Tile, Tile[]] => {
+    const match = tiles.find(({ id, bottom, right }) => {
+        const target = new Set(tiles.filter(t => t.id === id).flatMap(edges));
+        const others = new Set(tiles.filter(t => t.id !== id).flatMap(edges));
+        const overlaps = intersect(target, others);
+        return overlaps.size === 4
+            && overlaps.has(bottom)
+            && overlaps.has(right);
+    });
+    if (!isDefined(match)) {
+        throw new Error('Cannot find top left corner');
+    }
+
+    return [match, tiles.filter(t => t.id !== match.id)];
 };
 
-const findMatch = (tiles: Tile[], side: Side, edge: string): Tile | undefined =>
-    tiles.find(g => g[side] === edge);
-
-const align = (corners: Tile[], sides: Tile[], middle: Tile[]): Tile[][] => {
-    const topLeft = corners.find(c => {
-        const overlaps = overlap(c.id, corners.concat(sides)).flatMap(edges);
-        return overlaps.includes(c.bottom) && overlaps.includes(c.right);
-    });
-    if (!isDefined(topLeft)) {
-        throw new Error();
+const popMatch = (tiles: Tile[], side: Side, edge: string): [Tile, Tile[]] => {
+    const match = tiles.find(g => g[side] === edge);
+    if (!isDefined(match)) {
+        throw new Error('Cannot find connecting tile');
     }
 
-    const size = (sides.length / 32) + 2;
-    const final = Array.from(Array<Tile[]>(size), _ => Array<Tile>(size));
-
-    corners = corners.filter(c => c.id !== topLeft.id);
-    final[0][0] = topLeft;
-    for (let i = 1; i < size - 1; ++i) {
-        const match = findMatch(sides, 'left', final[0][i - 1].right);
-        if (!isDefined(match)) {
-            throw new Error();
-        }
-
-        sides = sides.filter(s => s.id !== match.id);
-        final[0][i] = match;
-    }
-
-    const topRight = findMatch(corners, 'left', final[0][size - 2].right);
-    if (!isDefined(topRight)) {
-        throw new Error();
-    }
-
-    corners = corners.filter(c => c.id !== topRight.id);
-    final[0][size - 1] = topRight;
-
-    for (let i = 1; i < size - 1; ++i) {
-        const first = findMatch(sides, 'top', final[i - 1][0].bottom);
-        if (!isDefined(first)) {
-            throw new Error();
-        }
-
-        sides = sides.filter(s => s.id !== first.id);
-        final[i][0] = first
-
-        for (let j = 1; j < size - 1; ++j) {
-            const match = findMatch(middle, 'left', final[i][j - 1].right);
-            if (!isDefined(match)) {
-                throw new Error();
-            }
-
-            middle = middle.filter(r => r.id !== match.id);
-            final[i][j] = match;
-        }
-
-        const last = findMatch(sides, 'left', final[i][size - 2].right);
-        if (!isDefined(last)) {
-            throw new Error();
-        }
-
-        sides = sides.filter(s => s.id !== last.id);
-        final[i][size - 1] = last;
-    }
-
-    const bottomLeft = findMatch(corners, 'top', final[size - 2][0].bottom);
-    if (!isDefined(bottomLeft)) {
-        throw new Error();
-    }
-
-    corners = corners.filter(c => c.id !== bottomLeft.id);
-    final[size - 1][0] = bottomLeft;
-
-    for (let i = 1; i < size - 1; ++i) {
-        const match = findMatch(sides, 'left', final[size - 1][i - 1].right);
-        if (!isDefined(match)) {
-            throw new Error();
-        }
-
-        sides = sides.filter(s => s.id !== match.id);
-        final[size - 1][i] = match;
-    }
-
-    const bottomRight = findMatch(corners, 'left', final[size - 1][size - 2].right);
-    if (!isDefined(bottomRight)) {
-        throw new Error();
-    }
-
-    corners = corners.filter(c => c.id !== bottomRight.id);
-    final[size - 1][size - 1] = bottomRight;
-
-    return final;
+    return [match, tiles.filter(t => t.id !== match.id)];
 }
 
+const align = (tiles: Tile[]): Tile[][] => {
+    const size = Math.sqrt(tiles.length / 8);
+    const result = Array.from(Array(size), _ => Array<Tile>(size));
+
+    for (let row = 0; row < result.length; ++row) {
+        [result[row][0], tiles] = row === 0
+            ? popTopLeft(tiles)
+            : popMatch(tiles, 'top', result[row - 1][0].bottom);
+
+        for (let col = 1; col < result.length; ++col) {
+            [result[row][col], tiles] = popMatch(tiles, 'left', result[row][col - 1].right);
+        }
+    }
+
+    return result;
+};
+
 const connect = (aligned: Tile[][]): Image => Array.from((function*() {
-    for (const row of aligned) {
-        const mids = row.map(t => t.middle);
+    for (const mids of aligned.map(r => r.map(t => t.middle))) {
         for (let i = 0; i < mids[0].length; ++i) {
             yield mids.map(r => r[i]).join('');
         }
@@ -195,24 +137,28 @@ const monsters = (image: Image): number => countBy((function*() {
 })(), cs => cs.every(([x, y]) => image[x][y] === '#'));
 
 const day20 = (tiles: Tile[]): [number, number] => {
-    const corners = tiles.filter(t => overlap(t.id, tiles).length === 16);
-    const sides = tiles.filter(t => overlap(t.id, tiles).length === 24);
-    const middle = tiles.filter(t => overlap(t.id, tiles).length === 32);
+    const aligned = align(tiles);
 
-    const image = connect(align(corners, sides, middle));
+    const corners = [
+        aligned[0][0],
+        aligned[aligned.length - 1][0],
+        aligned[0][aligned.length - 1],
+        aligned[aligned.length - 1][aligned.length - 1],
+    ];
 
+    const image = connect(aligned);
     const total = countBy(image.flatMap(x => x.split('')), c => c === '#');
     const monster = orient(image).map(o => monsters(o) * 15).reduce((acc, curr) => acc + curr);
 
     return [
-        [...new Set(corners.map(c => c.id))].reduce((acc, curr) => acc * curr),
+        corners.map(t => t.id).reduce((acc, curr) => acc * curr),
         total - monster,
     ];
 };
 
 (async () => {
     const lines = await readInputLines('day20');
-    let tiles = parse(lines);
+    const tiles = parse(lines);
 
     const [part1, part2] = day20(tiles);
     console.log(part1);
