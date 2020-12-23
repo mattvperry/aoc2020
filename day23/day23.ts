@@ -1,4 +1,4 @@
-import { mod, readInputLines, splitAt, splitOn } from "../shared/utils";
+import { mod, readInputLines, repeatFn, splitAt, splitOn } from "../shared/utils";
 
 type Cups = number[];
 
@@ -22,16 +22,32 @@ const move = ([curr, x, y, z, ...rest]: Cups): Cups => {
     return [...before, x, y, z, ...after, curr];
 };
 
-const print = (cups: Cups): string =>
-    splitOn(cups, 1).reverse().map(x => x.join('')).join('');
+const move2 = ([cups, curr]: [Cups, number]): [Cups, number] => {
+    const size = cups.length
+    let dest = wrapPred(cups[curr], size);
 
-const repeat = <T>(x: T, times: number, fn: (x: T) => T): T => {
-    for (let i = 0; i < times; ++i) {
-        x = fn(x);
+    const toMove = curr + 3 >= size
+        ? curr === size - 1
+        ? cups.splice(0, 3)
+        : [...cups.splice(curr + 1), ...cups.splice(0, 3 - (size - curr - 1))]
+        : cups.splice(curr + 1, 3);
+        
+    while (toMove.includes(dest)) {
+        dest = wrapPred(dest, size);
     }
 
-    return x;
+    const insert = cups.indexOf(dest);
+    if (insert === -1) {
+        throw new Error(`Couldn't find destination: ${dest}`);
+    }
+
+    const next = cups[curr >= cups.length - 1 ? 0 : curr + 1];
+    cups.splice(insert + 1, 0, ...toMove);
+    return [cups, cups.indexOf(next)];
 };
+
+const print = (cups: Cups): string =>
+    splitOn(cups, 1).reverse().map(x => x.join('')).join('');
 
 function* extra(): Iterable<number> {
     for (let x = 10; x <= 1000000; ++x) {
@@ -40,14 +56,14 @@ function* extra(): Iterable<number> {
 }
 
 const part1 = (cups: Cups): string =>
-    print(repeat(cups, 100, move));
+    print(repeatFn([cups, 0], 100, move2)[0]);
 
 const part2 = (cups: Cups): string =>
-    print(repeat([...cups, ...extra()], 10000000, move));
+    print(repeatFn([[...cups, ...extra()], 0], 10000000, move2)[0]);
 
 (async () => {
-    const line = (await readInputLines('day23'))[0];
-    const cups = line.split('').map(d => parseInt(d, 10));
+    const lines = await readInputLines('day23');
+    const cups = lines[0].split('').map(d => parseInt(d, 10));
 
     console.log(part1(cups));
     console.log(part2(cups));

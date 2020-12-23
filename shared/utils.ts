@@ -130,6 +130,14 @@ export const zipWith = <T, U>(xs: T[], ys: T[], fn: (a: T, b: T) => U): U[] => {
     return [fn(x, y), ...zipWith(xr, yr, fn)];
 };
 
+export const repeatFn = <T>(x: T, times: number, fn: (x: T) => T): T => {
+    for (let i = 0; i < times; ++i) {
+        x = fn(x);
+    }
+
+    return x;
+};
+
 export const intersect = <T>(xs: Set<T>, ys: Set<T>): Set<T> =>
     new Set([...xs].filter(x => ys.has(x)));
 
