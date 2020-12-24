@@ -58,13 +58,16 @@ function* extra(): Iterable<number> {
 const part1 = (cups: Cups): string =>
     print(repeatFn([cups, 0], 100, move2)[0]);
 
-const part2 = (cups: Cups): string =>
-    print(repeatFn([[...cups, ...extra()], 0], 10000000, move2)[0]);
+const part2 = (cups: Cups): number => {
+    const [end] = repeatFn([[...cups, ...extra()], 0], 10000000, move2);
+    const idx = end.indexOf(1);
+    return end[idx + 1] * end[idx + 2];
+};
 
 (async () => {
     const lines = await readInputLines('day23');
     const cups = lines[0].split('').map(d => parseInt(d, 10));
 
-    console.log(part1(cups));
-    console.log(part2(cups));
+    console.log(part1(cups.slice()));
+    console.log(part2(cups.slice()));
 })();
