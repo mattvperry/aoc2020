@@ -1,50 +1,26 @@
-import { mod, readInputLines, repeatFn, splitAt, splitOn } from "../shared/utils";
+import { mod, readInputLines } from "../shared/utils";
 
-type Cups = number[];
+type Cups = Map<number, number>;
+
+const init = (nums: number[]): [Cups, number] => {
+    const entries = nums.map((x, i) => [x, nums[(i + 1) % nums.length]] as const);
+    return [
+        new Map(entries),
+        nums[0],
+    ];
+};
+
+const toArray = (cups: Cups, from: number, len: number) => Array.from((function*() {
+    for (let i = 0; i < len; ++i) {
+        from = cups.get(from) ?? -1;
+        yield from;
+    }
+})());
 
 const wrapPred = (num: number, len: number): number => {
     const x = mod(num - 1, len);
     return x === 0 ? len : x;
 }
-
-const move = ([curr, x, y, z, ...rest]: Cups): Cups => {
-    let dest = wrapPred(curr, rest.length + 4);
-    while ([x, y, z].includes(dest)) {
-        dest = wrapPred(dest, rest.length + 4);
-    }
-
-    const insert = rest.indexOf(dest);
-    if (insert === -1) {
-        throw new Error(`Couldn't find destination: ${dest}`);
-    }
-
-    const [before, after] = splitAt(rest, insert + 1);
-    return [...before, x, y, z, ...after, curr];
-};
-
-const move2 = ([cups, curr]: [Cups, number]): [Cups, number] => {
-    const size = cups.length
-    let dest = wrapPred(cups[curr], size);
-
-    const toMove = curr + 3 >= size
-        ? curr === size - 1
-        ? cups.splice(0, 3)
-        : [...cups.splice(curr + 1), ...cups.splice(0, 3 - (size - curr - 1))]
-        : cups.splice(curr + 1, 3);
-        
-    while (toMove.includes(dest)) {
-        dest = wrapPred(dest, size);
-    }
-
-    const insert = cups.indexOf(dest);
-    if (insert === -1) {
-        throw new Error(`Couldn't find destination: ${dest}`);
-    }
-
-    const next = cups[curr >= cups.length - 1 ? 0 : curr + 1];
-    cups.splice(insert + 1, 0, ...toMove);
-    return [cups, cups.indexOf(next)];
-};
 
 function* extra(): Iterable<number> {
     for (let x = 10; x <= 1000000; ++x) {
@@ -52,21 +28,44 @@ function* extra(): Iterable<number> {
     }
 }
 
-const part1 = (cups: Cups): string => {
-    const [end] = repeatFn([cups, 0], 100, move2);
-    return splitOn(end, 1).reverse().map(x => x.join('')).join('');
+const run = (nums: number[], times: number): Cups => {
+    let [cups, curr] = init(nums);
+    for (let i = 0; i < times; ++i) {
+        const a = cups.get(curr) ?? -1;
+        const b = cups.get(a) ?? -1;
+        const c = cups.get(b) ?? -1;
+
+        let dest = wrapPred(curr, cups.size);
+        while (dest === a || dest === b || dest === c) {
+            dest = wrapPred(dest, cups.size);
+        }
+
+        const next = cups.get(c) ?? -1;
+        cups.set(curr, next);
+        curr = next;
+
+        const temp = cups.get(dest) ?? -1;
+        cups.set(dest, a);
+        cups.set(c, temp);
+    }
+
+    return cups;
+}
+
+const part1 = (nums: number[]): string => {
+    const cups = run(nums, 100);
+    return toArray(cups, 1, cups.size - 1).join('');
 };
 
-const part2 = (cups: Cups): number => {
-    const [end] = repeatFn([[...cups, ...extra()], 0], 10000000, move2);
-    const idx = end.indexOf(1);
-    return end[idx + 1] * end[idx + 2];
+const part2 = (nums: number[]): number => {
+    const cups = run([...nums, ...extra()], 10000000);
+    return toArray(cups, 1, 2).reduce((acc, curr) => acc * curr);
 };
 
 (async () => {
     const lines = await readInputLines('day23');
-    const cups = lines[0].split('').map(d => parseInt(d, 10));
+    const nums = lines[0].split('').map(x => parseInt(x, 10));
 
-    console.log(part1(cups.slice()));
-    console.log(part2(cups.slice()));
+    console.log(part1(nums));
+    console.log(part2(nums));
 })();
