@@ -46,17 +46,16 @@ const move2 = ([cups, curr]: [Cups, number]): [Cups, number] => {
     return [cups, cups.indexOf(next)];
 };
 
-const print = (cups: Cups): string =>
-    splitOn(cups, 1).reverse().map(x => x.join('')).join('');
-
 function* extra(): Iterable<number> {
     for (let x = 10; x <= 1000000; ++x) {
         yield x;
     }
 }
 
-const part1 = (cups: Cups): string =>
-    print(repeatFn([cups, 0], 100, move2)[0]);
+const part1 = (cups: Cups): string => {
+    const [end] = repeatFn([cups, 0], 100, move2);
+    return splitOn(end, 1).reverse().map(x => x.join('')).join('');
+};
 
 const part2 = (cups: Cups): number => {
     const [end] = repeatFn([[...cups, ...extra()], 0], 10000000, move2);
